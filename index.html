@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdminToolbox - Outils Réseau & Sécurité</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Bibliothèque pour les Hash MD5, SHA256, SHA512 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans text-slate-800">
+
+    <!-- Navbar / Onglets -->
+    <nav class="bg-blue-800 text-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4 flex space-x-1">
+            <button onclick="switchTab('ipCalc')" id="tab-ipCalc" class="px-4 py-3 font-semibold bg-blue-900 border-b-4 border-blue-400 hover:bg-blue-700 transition">Calculatrice IP</button>
+            <button onclick="switchTab('vlsmCalc')" id="tab-vlsmCalc" class="px-4 py-3 font-semibold hover:bg-blue-700 border-b-4 border-transparent transition">Découpage VLSM</button>
+            <button onclick="switchTab('secuTools')" id="tab-secuTools" class="px-4 py-3 font-semibold hover:bg-blue-700 border-b-4 border-transparent transition">Sécurité (Hash/Base64)</button>
+        </div>
+    </nav>
+
+    <div class="max-w-4xl mx-auto p-6 mt-4">
+
+        <!-- MODULE 1 : CALCULATRICE IP -->
+        <div id="ipCalc" class="tab-content bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">Calculatrice IP & Diagnostic</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Adresse IP</label>
+                    <input type="text" id="ipInput" placeholder="192.168.1.10" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">CIDR (ex: 24)</label>
+                    <input type="number" id="cidrInput" placeholder="24" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="calculerIP()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Analyser l'IP</button>
+
+            <div id="resultatsIP" class="hidden mt-6 bg-slate-50 border rounded-lg p-4 space-y-2 text-sm">
+                <p><strong>Classe / Type :</strong> <span id="resClasseType" class="text-blue-600"></span></p>
+                <p><strong>Réseau :</strong> <span id="resReseau"></span></p>
+                <p><strong>Masque :</strong> <span id="resMasque"></span></p>
+                <p><strong>Plage utilisable :</strong> <span id="resPlage"></span></p>
+                <p><strong>Broadcast :</strong> <span id="resBroadcast"></span></p>
+                <p><strong>Hôtes max :</strong> <span id="resHotes"></span></p>
+            </div>
+        </div>
+
+        <!-- MODULE 2 : VLSM -->
+        <div id="vlsmCalc" class="tab-content hidden bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">Découpage VLSM (Sous-réseaux)</h2>
+            <p class="text-sm text-slate-500 mb-4">Entrez un réseau majeur et le nombre d'hôtes nécessaires par sous-réseau (séparés par des virgules).</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Réseau Majeur (ex: 192.168.0.0/16)</label>
+                    <input type="text" id="vlsmNetwork" placeholder="192.168.0.0/16" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Taille des sous-réseaux (Hôtes)</label>
+                    <input type="text" id="vlsmHosts" placeholder="100, 50, 25, 10" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <button onclick="calculerVLSM()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Générer le plan d'adressage</button>
+            
+            <div id="resultatsVLSM" class="hidden mt-6 overflow-x-auto">
+                <table class="w-full text-sm text-left border">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th class="p-2 border">Hôtes requis</th>
+                            <th class="p-2 border">Réseau alloué</th>
+                            <th class="p-2 border">CIDR</th>
+                            <th class="p-2 border">Plage IP</th>
+                            <th class="p-2 border">Broadcast</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vlsmTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MODULE 3 : SECURITE (HASH / BASE64) -->
+        <div id="secuTools" class="tab-content hidden bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2">Utilitaires de Sécurité</h2>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-1">Texte à traiter</label>
+                <textarea id="secuInput" rows="3" class="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500" placeholder="Entrez le texte ici..."></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mb-6">
+                <button onclick="processSecu('md5')" class="bg-slate-800 text-white py-2 rounded hover:bg-slate-700">Hash MD5</button>
+                <button onclick="processSecu('sha256')" class="bg-slate-800 text-white py-2 rounded hover:bg-slate-700">Hash SHA256</button>
+                <button onclick="processSecu('sha512')" class="bg-slate-800 text-white py-2 rounded hover:bg-slate-700">Hash SHA512</button>
+                <div class="flex space-x-2">
+                    <button onclick="processSecu('b64enc')" class="w-1/2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Encoder Base64</button>
+                    <button onclick="processSecu('b64dec')" class="w-1/2 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Décoder Base64</button>
+                </div>
+            </div>
+
+            <div id="secuResultDiv" class="hidden">
+                <label class="block text-sm font-semibold mb-1 text-green-700">Résultat :</label>
+                <textarea id="secuOutput" rows="3" class="w-full border border-green-400 bg-green-50 rounded-lg p-2" readonly></textarea>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- LOGIQUE JAVASCRIPT -->
+    <script>
+        // --- GESTION DES ONGLETS ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(btn => {
+                btn.classList.remove('bg-blue-900', 'border-blue-400');
+                btn.classList.add('border-transparent');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById('tab-' + tabId).classList.remove('border-transparent');
+            document.getElementById('tab-' + tabId).classList.add('bg-blue-900', 'border-blue-400');
+        }
+
+        // --- OUTILS IP BASIQUES (Raccourcis pour l'IP Calc et VLSM) ---
+        const ipToInt = ip => ip.split('.').reduce((int, oct) => (int << 8) + parseInt(oct, 10), 0) >>> 0;
+        const intToIp = int => [(int >>> 24) & 255, (int >>> 16) & 255, (int >>> 8) & 255, int & 255].join('.');
+
+        // --- MODULE 1: IP CALCULATOR ---
+        function calculerIP() {
+            const ipStr = document.getElementById('ipInput').value;
+            const cidr = parseInt(document.getElementById('cidrInput').value);
+            if(!ipStr || isNaN(cidr)) return alert("Entrées invalides");
+
+            let ipInt = ipToInt(ipStr);
+            let maskInt = ~((1 << (32 - cidr)) - 1) >>> 0;
+            let netInt = (ipInt & maskInt) >>> 0;
+            let broadInt = (netInt | ~maskInt) >>> 0;
+
+            document.getElementById('resClasseType').textContent = `CIDR /${cidr}`;
+            document.getElementById('resReseau').textContent = intToIp(netInt);
+            document.getElementById('resMasque').textContent = intToIp(maskInt);
+            document.getElementById('resPlage').textContent = `${intToIp(netInt + 1)} - ${intToIp(broadInt - 1)}`;
+            document.getElementById('resBroadcast').textContent = intToIp(broadInt);
+            document.getElementById('resHotes').textContent = Math.pow(2, 32 - cidr) - 2;
+            
+            document.getElementById('resultatsIP').classList.remove('hidden');
+        }
+
+        // --- MODULE 2: VLSM ---
+        function calculerVLSM() {
+            const netInput = document.getElementById('vlsmNetwork').value.split('/');
+            const hostsInput = document.getElementById('vlsmHosts').value.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+            
+            if(netInput.length !== 2 || hostsInput.length === 0) return alert("Format invalide.");
+            
+            let currentIpInt = ipToInt(netInput[0]);
+            hostsInput.sort((a, b) => b - a); // Tri décroissant (règle d'or du VLSM)
+
+            const tbody = document.getElementById('vlsmTableBody');
+            tbody.innerHTML = '';
+
+            hostsInput.forEach(hotesRequis => {
+                // Trouver la puissance de 2 supérieure
+                let bitsHote = Math.ceil(Math.log2(hotesRequis + 2)); 
+                let cidr = 32 - bitsHote;
+                let tailleBloc = Math.pow(2, bitsHote);
+
+                let netIp = intToIp(currentIpInt);
+                let firstIp = intToIp(currentIpInt + 1);
+                let broadcastInt = currentIpInt + tailleBloc - 1;
+                let lastIp = intToIp(broadcastInt - 1);
+                let broadIp = intToIp(broadcastInt);
+
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="p-2 font-bold">${hotesRequis}</td>
+                        <td class="p-2 text-blue-700">${netIp}</td>
+                        <td class="p-2">/${cidr}</td>
+                        <td class="p-2 text-xs">${firstIp} - ${lastIp}</td>
+                        <td class="p-2 text-slate-500">${broadIp}</td>
+                    </tr>
+                `;
+                currentIpInt += tailleBloc; // Passer au bloc suivant
+            });
+
+            document.getElementById('resultatsVLSM').classList.remove('hidden');
+        }
+
+        // --- MODULE 3: SECURITE ---
+        function processSecu(action) {
+            const input = document.getElementById('secuInput').value;
+            if(!input) return alert("Veuillez entrer du texte.");
+            
+            let output = "";
+            try {
+                if(action === 'md5') output = CryptoJS.MD5(input).toString();
+                if(action === 'sha256') output = CryptoJS.SHA256(input).toString();
+                if(action === 'sha512') output = CryptoJS.SHA512(input).toString();
+                if(action === 'b64enc') output = btoa(input);
+                if(action === 'b64dec') output = atob(input);
+            } catch(e) {
+                output = "Erreur de traitement (vérifiez l'encodage Base64)";
+            }
+
+            document.getElementById('secuOutput').value = output;
+            document.getElementById('secuResultDiv').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
