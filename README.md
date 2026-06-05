@@ -32,5 +32,5 @@ L'outil est divisé en trois modules interactifs :
 ## 🚀 Utilisation
 
 L'application fonctionne entièrement côté client (dans le navigateur).
-- **Version en ligne :** [Insérer ici ton lien Vercel, ex: https://admin-toolbox.vercel.app]
+- **Version en ligne :** https://calculatrice-ip.vercel.app/
 - **Version locale :** Téléchargez simplement le fichier `index.html` et ouvrez-le avec n'importe quel navigateur web moderne.
